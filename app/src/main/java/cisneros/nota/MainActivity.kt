@@ -116,7 +116,7 @@ private fun TextSizeDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Selecciona el tamaño de texto más cómodo para ti:")
-                TextSizeLevel.values().forEach { size ->
+                TextSizeLevel.entries.forEach { size ->
                     val isSelected = size == currentSize
                     val fontSize = when (size) {
                         TextSizeLevel.SMALLEST -> 14.sp

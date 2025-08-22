@@ -24,5 +24,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NotaA"
+rootProject.name = "Nota JACC"
 include(":app")
