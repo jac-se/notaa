@@ -8,17 +8,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cisneros.nota.vm.NoteVm
-import java.text.SimpleDateFormat
-import java.util.*
 
 @Composable
 fun AccessibleEditorScreen(
@@ -29,16 +25,6 @@ fun AccessibleEditorScreen(
     val state by vm.state.collectAsState()
     val editing = state.editing ?: return
     val sizes = textSize.toAccessibleSizes()
-
-    // Prefijar título con fecha/hora de México si es nota nueva y sin título
-    LaunchedEffect(editing.id) {
-        if (editing.id == 0L && editing.title.isBlank()) {
-            val tz = TimeZone.getTimeZone("America/Mexico_City")
-            val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "MX"))
-            sdf.timeZone = tz
-            vm.updateEditing(title = sdf.format(Date()))
-        }
-    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -122,7 +108,7 @@ fun AccessibleEditorScreen(
                 OutlinedTextField(
                     value = editing.title,
                     onValueChange = { vm.updateEditing(title = it) },
-                    label = { Text("Título de la nota", fontSize = sizes.body) },
+                    label = { Text("Título (opcional)", fontSize = sizes.body) },
                     textStyle = LocalTextStyle.current.copy(fontSize = sizes.body, fontWeight = FontWeight.Medium),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 70.dp),
                     singleLine = true,
@@ -132,7 +118,7 @@ fun AccessibleEditorScreen(
                 OutlinedTextField(
                     value = editing.body,
                     onValueChange = { vm.updateEditing(body = it) },
-                    label = { Text("Contenido de la nota", fontSize = sizes.body) },
+                    label = { Text("Contenido", fontSize = sizes.body) },
                     textStyle = LocalTextStyle.current.copy(fontSize = sizes.body),
                     modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 160.dp),
                     minLines = 6,

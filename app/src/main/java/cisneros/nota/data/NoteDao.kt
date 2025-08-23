@@ -1,6 +1,5 @@
 // app/src/main/java/cisneros/nota/data/NoteDao.kt
-// CAMBIOS: eliminado updatedAtMillis (no existe en tu entidad),
-// ahora usamos createdAt y deletedAt. Se añadieron funciones reales de papelera.
+// CORRECCIÓN: una sola interfaz @Dao. Campos usados: id, title, content, createdAt, deletedAt.
 
 package cisneros.nota.data
 
@@ -13,10 +12,28 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NoteDao {
 
+
+    // ---- Streams principales ----
     @Query("""
         SELECT * FROM notes
         WHERE deletedAt IS NULL
-        AND (:q == '' OR title LIKE '%' || :q || '%' OR content LIKE '%' || :q || '%')
+        ORDER BY createdAt DESC
+    """)
+    fun streamAll(): Flow<List<NoteEntity>>
+
+    @Query("""
+        SELECT * FROM notes
+        WHERE deletedAt IS NULL
+          AND (title LIKE :q OR content LIKE :q)
+        ORDER BY createdAt DESC
+    """)
+    suspend fun search(q: String): List<NoteEntity>
+
+    // ---- Observables con filtro opcional ----
+    @Query("""
+        SELECT * FROM notes
+        WHERE deletedAt IS NULL
+          AND (:q == '' OR title LIKE '%' || :q || '%' OR content LIKE '%' || :q || '%')
         ORDER BY createdAt DESC
     """)
     fun observeAll(q: String): Flow<List<NoteEntity>>
@@ -24,11 +41,12 @@ interface NoteDao {
     @Query("""
         SELECT * FROM notes
         WHERE deletedAt IS NOT NULL
-        AND (:q == '' OR title LIKE '%' || :q || '%' OR content LIKE '%' || :q || '%')
+          AND (:q == '' OR title LIKE '%' || :q || '%' OR content LIKE '%' || :q || '%')
         ORDER BY createdAt DESC
     """)
     fun observeTrash(q: String): Flow<List<NoteEntity>>
 
+    // ---- CRUD ----
     @Insert
     suspend fun insert(note: NoteEntity): Long
 
@@ -41,6 +59,7 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): NoteEntity?
 
+    // ---- Papelera ----
     @Query("UPDATE notes SET deletedAt = :millis WHERE id = :id")
     suspend fun moveToTrash(id: Long, millis: Long)
 

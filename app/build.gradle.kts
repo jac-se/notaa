@@ -73,6 +73,10 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+    //Material 3 UI
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.material3.windowsizeclass)
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

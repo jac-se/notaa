@@ -4,8 +4,9 @@ kotlin = "1.9.24"
 compose = "1.6.0"
 ksp = "1.9.24-1.0.20"
 dokka = "1.9.20"
-
+material3 = "1.3.0"
 compose-bom = "2024.02.00"
+material3-windowsize = "1.3.0" # o la última que uses
 
 room = "2.6.1"
 lifecycle = "2.7.0"
@@ -33,6 +34,7 @@ dokka               = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 [libraries]
 # Core
 androidx-core-ktx = "androidx.core:core-ktx:1.13.1"
+androidx-compose-material3-windowsizeclass = { module = "androidx.compose.material3:material3-window-size-class", version.ref = "material3-windowsize" }
 
 # Compose BOM + modules (no version because BOM provides it)
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
@@ -64,6 +66,9 @@ desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref 
 # Room + KSP
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+# Material3 window size class (para responsive/adaptive UI)
+#androidx-material3-window-size-class = { module = "androidx.compose.material3:material3-window-size-class", version.ref = "material3" }
 
 # DataStore
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
