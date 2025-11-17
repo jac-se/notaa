@@ -1,35 +1,38 @@
 package cisneros.nota.vm
 
 import android.app.Application
-import android.text.format.DateUtils
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cisneros.nota.data.AppDb
 import cisneros.nota.data.NoteEntity
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
+// Representa lo que está en el editor (nueva o existente)
+data class EditingNote(
+    val id: Long? = null,
+    val title: String = "",
+    val body: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+// Estado de la pantalla principal
 data class UiState(
-    val items: List<NoteEntity> = emptyList(),
-    val editing: NoteEntity? = null,
+    val items: List<NoteEntity> = emptyList(),   // lista completa
+    val results: List<NoteEntity> = emptyList(), // resultados de búsqueda
     val query: String = "",
-    val searching: Boolean = false,
-    val results: List<NoteEntity> = emptyList()
+    val editing: EditingNote? = null             // null = lista, no hay editor abierto
 )
 
 class NoteVm(app: Application) : AndroidViewModel(app) {
 
-
     // ---- DB/DAO ----
-    private val db = AppDb.get(app)
-    private val dao = db.noteDao()
+    private val dao = AppDb.get(app).noteDao()
 
     // ---- Estado ----
     private val _state = MutableStateFlow(UiState())
@@ -37,80 +40,127 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
 
     // ---- Autosave ----
     private var autoSaveJob: Job? = null
-
-    // ---- Formatos fecha (CDMX, es-MX) ----
-    private val tz: TimeZone = TimeZone.getTimeZone("America/Mexico_City")
-    private val localeMx = Locale("es", "MX")
-    private val sameYearFmt = SimpleDateFormat("EEE d 'de' MMM, HH:mm", localeMx).apply { timeZone = tz }
-    private val otherYearFmt = SimpleDateFormat("EEE d 'de' MMM 'de' yyyy, HH:mm", localeMx).apply { timeZone = tz }
+    private var searchJob: Job? = null
 
     init {
-        // Stream de notas en tiempo real
+        // Nos suscribimos a la lista de notas activas
         viewModelScope.launch {
-            dao.streamAll().collectLatest { list ->
-                _state.update { it.copy(items = list) }
+            dao.streamAll().collect { notes ->
+                _state.update { it.copy(items = notes) }
             }
         }
     }
 
-    // -------------------------
-    // CRUD + edición
-    // -------------------------
+    // =========================
+    // BÚSQUEDA
+    // =========================
+    fun setQuery(q: String) {
+        _state.update { it.copy(query = q) }
+        searchJob?.cancel()
 
-    /** Inicia una nueva nota en edición con título autogenerado (fecha legible). */
-    fun newNote() {
-        val now = System.currentTimeMillis()
-        val note = NoteEntity(
-            // Ajusta nombres/orden según tu entidad real:
-            // id por defecto = 0L
-            title = defaultTitle(now),
-            body = "",
-            createdAt = now
-        )
-        _state.update { it.copy(editing = note) }
-    }
+        if (q.isBlank()) {
+            _state.update { it.copy(results = emptyList()) }
+            return
+        }
 
-    /** Carga a edición la nota con id dado. */
-    fun edit(id: Long) {
-        viewModelScope.launch {
-            val n = dao.getById(id)
-            _state.update { it.copy(editing = n) }
+        searchJob = viewModelScope.launch {
+            val res = dao.search(q)
+            _state.update { it.copy(results = res) }
         }
     }
 
-    /** Actualiza campos de la nota en edición (solo en memoria). */
-    fun updateEditing(title: String? = null, body: String? = null) {
-        _state.update { s ->
-            val e = s.editing ?: return@update s
-            s.copy(
-                editing = e.copy(
-                    title = title ?: e.title,
-                    body = body ?: e.body
+    // =========================
+    // NUEVA NOTA
+    // =========================
+    fun newNote() {
+        _state.update {
+            it.copy(
+                editing = EditingNote(
+                    id = null,
+                    title = "",
+                    body = "",
+                    createdAt = System.currentTimeMillis()
                 )
             )
         }
     }
 
-    /** Guarda la nota en edición (upsert). */
+    // =========================
+    // EDITAR NOTA EXISTENTE
+    // =========================
+    fun edit(id: Long) {
+        viewModelScope.launch {
+            val note = dao.getById(id) ?: return@launch
+            _state.update {
+                it.copy(
+                    editing = EditingNote(
+                        id = note.id,
+                        title = note.title,
+                        body = note.body,
+                        createdAt = note.createdAt
+                    )
+                )
+            }
+        }
+    }
+
+    // =========================
+    // ACTUALIZAR CAMPOS DEL EDITOR
+    // =========================
+    fun updateEditing(title: String? = null, body: String? = null) {
+        val current = _state.value.editing ?: return
+        val updated = current.copy(
+            title = title ?: current.title,
+            body = body ?: current.body
+        )
+        _state.update { it.copy(editing = updated) }
+    }
+
+    // =========================
+    // GUARDAR (INSERT / UPDATE)
+    // =========================
+    private suspend fun upsertFromVm(e: EditingNote): Long {
+        return if (e.id == null) {
+            // Nueva
+            dao.insert(
+                NoteEntity(
+                    title = e.title.ifBlank { "" },
+                    body = e.body,
+                    createdAt = e.createdAt
+                )
+            )
+        } else {
+            // Editar existente
+            dao.update(
+                NoteEntity(
+                    id = e.id,
+                    title = e.title,
+                    body = e.body,
+                    createdAt = e.createdAt
+                )
+            )
+            e.id
+        }
+    }
+
     fun saveEditing() {
         val e = _state.value.editing ?: return
+
+        // Si está completamente vacía, no guardamos nada
+        if (e.title.isBlank() && e.body.isBlank()) {
+            _state.update { it.copy(editing = null) }
+            return
+        }
+
         viewModelScope.launch {
             val id = upsertFromVm(e)
-            val refreshed = dao.getById(id) ?: e.copy(id = id)
-            _state.update { it.copy(editing = refreshed) }
+            _state.update { st ->
+                st.copy(
+                    editing = st.editing?.copy(id = id)
+                )
+            }
         }
     }
-
-    /** Envía a papelera (o elimina lógico según tu DAO). */
-    fun delete(id: Long) {
-        viewModelScope.launch {
-            dao.moveToTrash(id, System.currentTimeMillis())
-        }
-    }
-
-    // -------------------------
-    // Autosave (debounce)
-    // -------------------------
 
     /** Programa guardado automático tras [delayMs] ms sin más cambios. */
     fun autoSaveIfDirty(delayMs: Long = 800L) {
@@ -124,65 +174,9 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // -------------------------
-    // Búsqueda
-    // -------------------------
-
-    fun setQuery(q: String) {
-        _state.update { it.copy(query = q) }
-        search(q)
-    }
-
-    private fun search(q: String) {
-        viewModelScope.launch {
-            if (q.isBlank()) {
-                _state.update { it.copy(searching = false, results = emptyList()) }
-                return@launch
-            }
-            _state.update { it.copy(searching = true) }
-            val res = dao.search("%${q.trim()}%") // title LIKE o body LIKE en DAO
-            _state.update { it.copy(searching = false, results = res) }
-        }
-    }
-
-    // -------------------------
-    // Fechas y título
-    // -------------------------
-
-    /** Fecha legible omitiendo el año si es el actual. */
-    fun legibleOmitYear(epochMillis: Long, now: Long = System.currentTimeMillis()): String {
-        val cal = Calendar.getInstance(tz, localeMx).apply { timeInMillis = epochMillis }
-        val calNow = Calendar.getInstance(tz, localeMx).apply { timeInMillis = now }
-        return if (cal.get(Calendar.YEAR) == calNow.get(Calendar.YEAR)) {
-            sameYearFmt.format(Date(epochMillis))
-        } else {
-            otherYearFmt.format(Date(epochMillis))
-        }
-    }
-
-    /** Fecha relativa (“hace 3 min”, “hace 2 h”…). */
-    fun relativa(epochMillis: Long, now: Long = System.currentTimeMillis()): String {
-        return DateUtils.getRelativeTimeSpanString(
-            epochMillis, now, DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE
-        ).toString()
-    }
-
-    /** Título por defecto (fecha legible). */
-    fun defaultTitle(now: Long = System.currentTimeMillis()): String = legibleOmitYear(now, now)
-
-    // -------------------------
-    // Upsert desde VM (sin updatedAt)
-    // -------------------------
-
-    private suspend fun upsertFromVm(n: NoteEntity): Long {
-        return if (n.id == 0L) {
-            val created = if (n.createdAt > 0) n.createdAt else System.currentTimeMillis()
-            dao.insert(n.copy(createdAt = created))
-        } else {
-            dao.update(n)
-            n.id
-        }
-    }
+    // =========================
+    // BORRAR (papelera o definitivo)
+    // =========================
     fun deleteNote(id: Long, hardDelete: Boolean = false) {
         viewModelScope.launch {
             if (hardDelete) {
@@ -190,10 +184,15 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
             } else {
                 dao.moveToTrash(id, System.currentTimeMillis()) // papelera
             }
+
+            // Si justo la que se estaba editando era esa, cierra el editor
+            _state.update { st ->
+                if (st.editing?.id == id) st.copy(editing = null) else st
+            }
         }
     }
+
     fun closeEditor() {
         _state.update { it.copy(editing = null) }
     }
-
 }

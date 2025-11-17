@@ -39,13 +39,30 @@ fun App(vm: NoteVm) {
     var baseTitleSp by remember { mutableStateOf(22.sp) }  // más grande para título
 
     // Editor muestra siempre la nota actual (si hubiera null, crea placeholder local)
-    val note = state.editing ?: NoteEntity(title = "", body = "")
+    val note: NoteEntity = state.editing?.let { e ->
+        NoteEntity(
+            id = e.id ?: 0L,
+            title = e.title,
+            body = e.body,
+            createdAt = e.createdAt
+        )
+    } ?: NoteEntity(title = "", body = "")
 
     // Zona/locale MX para mostrar en header (informativo)
     val zoneMx = remember { ZoneId.of("America/Mexico_City") }
     val localeMx = remember { Locale("es", "MX") }
-    val dateOnlyFmt = remember { DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", localeMx) }
-    val timeOnlyFmt = remember { DateTimeFormatter.ofPattern("HH:mm", localeMx) }
+    val dateOnlyFmt = remember {
+        DateTimeFormatter.ofPattern(
+            "EEEE d 'de' MMMM yyyy",
+            localeMx
+        )
+    }
+    val timeOnlyFmt = remember {
+        DateTimeFormatter.ofPattern(
+            "HH:mm",
+            localeMx
+        )
+    }
     var now by remember { mutableStateOf(ZonedDateTime.now(zoneMx)) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -77,7 +94,8 @@ fun App(vm: NoteVm) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             // Encabezado informativo (la nota ya trae este título por defecto)
                             Text(
-                                text = now.format(dateOnlyFmt).replaceFirstChar { it.uppercase(localeMx) },
+                                text = now.format(dateOnlyFmt)
+                                    .replaceFirstChar { it.uppercase(localeMx) },
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Text(
@@ -91,22 +109,37 @@ fun App(vm: NoteVm) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
                                 onClick = {
-                                    baseBodySp = (baseBodySp.value - 2).coerceAtLeast(14f).sp
-                                    baseTitleSp = (baseTitleSp.value - 2).coerceAtLeast(18f).sp
+                                    baseBodySp = (baseBodySp.value - 2)
+                                        .coerceAtLeast(14f).sp
+                                    baseTitleSp = (baseTitleSp.value - 2)
+                                        .coerceAtLeast(18f).sp
                                 },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                contentPadding = PaddingValues(
+                                    horizontal = 12.dp,
+                                    vertical = 10.dp
+                                )
                             ) { Text("A-") }
+
                             OutlinedButton(
                                 onClick = {
-                                    baseBodySp = (baseBodySp.value + 2).coerceAtMost(28f).sp
-                                    baseTitleSp = (baseTitleSp.value + 2).coerceAtMost(34f).sp
+                                    baseBodySp = (baseBodySp.value + 2)
+                                        .coerceAtMost(28f).sp
+                                    baseTitleSp = (baseTitleSp.value + 2)
+                                        .coerceAtMost(34f).sp
                                 },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                contentPadding = PaddingValues(
+                                    horizontal = 12.dp,
+                                    vertical = 10.dp
+                                )
                             ) { Text("A+") }
+
                             // Guardar grande
                             Button(
                                 onClick = { vm.saveEditing() },
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                                contentPadding = PaddingValues(
+                                    horizontal = 20.dp,
+                                    vertical = 12.dp
+                                )
                             ) { Text("Guardar") }
                         }
                     }
@@ -217,12 +250,16 @@ private fun NoteEditorLarge(
         )
         Spacer(Modifier.height(12.dp))
         // Botones grandes y claros
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Button(
                 onClick = onShareWhats,
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 modifier = Modifier.weight(1f)
             ) { Text("WhatsApp") }
+
             // Dejamos un segundo botón para acciones futuras (por ahora no hace nada)
             OutlinedButton(
                 onClick = { /* reservado */ },

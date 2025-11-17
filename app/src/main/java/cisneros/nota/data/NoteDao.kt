@@ -1,5 +1,5 @@
 // app/src/main/java/cisneros/nota/data/NoteDao.kt
-// CORRECCIÓN: una sola interfaz @Dao. Campos usados: id, title, content, createdAt, deletedAt.
+// DAO simple y claro: lista, búsqueda, CRUD y papelera.
 
 package cisneros.nota.data
 
@@ -12,54 +12,33 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NoteDao {
 
-
-    // ---- Streams principales ----
-    @Query("""
-        SELECT * FROM notes
-        WHERE deletedAt IS NULL
-        ORDER BY createdAt DESC
-    """)
+    // ===== LISTA PRINCIPAL (notas activas) =====
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY createdAt DESC")
     fun streamAll(): Flow<List<NoteEntity>>
 
+    // ===== BÚSQUEDA (solo notas activas) =====
     @Query("""
         SELECT * FROM notes
         WHERE deletedAt IS NULL
-          AND (title LIKE :q OR content LIKE :q)
+          AND (title LIKE '%' || :query || '%' OR content LIKE '%' || :query || '%')
         ORDER BY createdAt DESC
     """)
-    suspend fun search(q: String): List<NoteEntity>
+    suspend fun search(query: String): List<NoteEntity>
 
-    // ---- Observables con filtro opcional ----
-    @Query("""
-        SELECT * FROM notes
-        WHERE deletedAt IS NULL
-          AND (:q == '' OR title LIKE '%' || :q || '%' OR content LIKE '%' || :q || '%')
-        ORDER BY createdAt DESC
-    """)
-    fun observeAll(q: String): Flow<List<NoteEntity>>
-
-    @Query("""
-        SELECT * FROM notes
-        WHERE deletedAt IS NOT NULL
-          AND (:q == '' OR title LIKE '%' || :q || '%' OR content LIKE '%' || :q || '%')
-        ORDER BY createdAt DESC
-    """)
-    fun observeTrash(q: String): Flow<List<NoteEntity>>
-
-    // ---- CRUD ----
+    // ===== CRUD =====
     @Insert
     suspend fun insert(note: NoteEntity): Long
 
     @Update
     suspend fun update(note: NoteEntity)
 
-    @Query("DELETE FROM notes WHERE id = :id")
-    suspend fun deleteById(id: Long)
-
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): NoteEntity?
 
-    // ---- Papelera ----
+    @Query("DELETE FROM notes WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    // ===== PAPELERA =====
     @Query("UPDATE notes SET deletedAt = :millis WHERE id = :id")
     suspend fun moveToTrash(id: Long, millis: Long)
 
