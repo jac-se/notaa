@@ -23,20 +23,21 @@ import java.util.Locale
 
 /**
  * Pantalla principal (para adultos mayores):
- * - **Editor como Home**.
- * - **Título por defecto** = fecha/hora CDMX (viene del VM).
- * - **Letra grande** por defecto con controles **A-/A+**.
- * - **Botones grandes** (Guardar / Compartir WhatsApp).
- * - **Autoguardado**: cada 60s y tras 800ms de inactividad al escribir.
+ * - Editor como Home.
+ * - Calendario de notas.
+ * - Letra grande y controles A-/A+.
  */
 @Composable
 fun App(vm: NoteVm) {
     val state by vm.state.collectAsState()
     val ctx = LocalContext.current
 
-    // Tamaños de fuente ajustables (persistencia simple en memoria)
+    // Tamaños de fuente ajustables
     var baseBodySp by remember { mutableStateOf(18.sp) }   // grande por defecto
     var baseTitleSp by remember { mutableStateOf(22.sp) }  // más grande para título
+
+    // Toggle entre Editor y Calendario
+    var showCalendar by remember { mutableStateOf(false) }
 
     // Editor muestra siempre la nota actual (si hubiera null, crea placeholder local)
     val note: NoteEntity = state.editing?.let { e ->
@@ -146,40 +147,74 @@ fun App(vm: NoteVm) {
                 )
             }
         ) { padding ->
-            NoteEditorLarge(
-                note = note,
-                onTitle = { vm.updateEditing(title = it) },
-                onBody = { vm.updateEditing(body = it) },
-                onIdle = { vm.autoSaveIfDirty() }, // AUTOGUARDADO 2: debounce al escribir
-                onShareWhats = {
-                    val text = buildShareText(note)
-                    val wa = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, text)
-                        // Forzamos WhatsApp si está; si no, caerá al chooser
-                        `package` = "com.whatsapp"
-                    }
-                    try {
-                        ctx.startActivity(wa)
-                    } catch (_: ActivityNotFoundException) {
-                        // Fallback: chooser genérico
-                        val chooser = Intent.createChooser(
-                            Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, text)
-                            },
-                            "Compartir nota"
-                        )
-                        ctx.startActivity(chooser)
-                    }
-                },
+            Column(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
                     .padding(16.dp),
-                bodySp = baseBodySp,
-                titleSp = baseTitleSp
-            )
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Botones grandes para cambiar de vista
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { showCalendar = false },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 12.dp)
+                    ) {
+                        Text("Escribir", style = MaterialTheme.typography.bodyLarge)
+                    }
+                    Button(
+                        onClick = { showCalendar = true },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 12.dp)
+                    ) {
+                        Text("Calendario", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+
+                // Contenido principal: Editor o Calendario
+                if (showCalendar) {
+                    SeniorCalendarScreen(
+                        notes = state.items,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    NoteEditorLarge(
+                        note = note,
+                        onTitle = { vm.updateEditing(title = it) },
+                        onBody = { vm.updateEditing(body = it) },
+                        onIdle = { vm.autoSaveIfDirty() }, // AUTOGUARDADO 2
+                        onShareWhats = {
+                            val text = buildShareText(note)
+                            val wa = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
+                                // Forzamos WhatsApp si está; si no, caerá al chooser
+                                `package` = "com.whatsapp"
+                            }
+                            try {
+                                ctx.startActivity(wa)
+                            } catch (_: ActivityNotFoundException) {
+                                // Fallback: chooser genérico
+                                val chooser = Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, text)
+                                    },
+                                    "Compartir nota"
+                                )
+                                ctx.startActivity(chooser)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        bodySp = baseBodySp,
+                        titleSp = baseTitleSp
+                    )
+                }
+            }
         }
     }
 }
@@ -194,15 +229,6 @@ private fun buildShareText(note: NoteEntity): String =
 
 /**
  * Editor accesible (letra grande) para una nota.
- *
- * @param note        Nota a editar.
- * @param onTitle     Callback al cambiar título.
- * @param onBody      Callback al cambiar contenido.
- * @param onIdle      Se dispara tras breve inactividad para autoguardado.
- * @param onShareWhats Compartir por WhatsApp como texto.
- * @param modifier    Modificador exterior.
- * @param bodySp      Tamaño base del cuerpo.
- * @param titleSp     Tamaño base del título.
  */
 @Composable
 private fun NoteEditorLarge(
@@ -260,7 +286,6 @@ private fun NoteEditorLarge(
                 modifier = Modifier.weight(1f)
             ) { Text("WhatsApp") }
 
-            // Dejamos un segundo botón para acciones futuras (por ahora no hace nada)
             OutlinedButton(
                 onClick = { /* reservado */ },
                 enabled = false,

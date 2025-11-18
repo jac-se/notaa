@@ -12,17 +12,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
@@ -53,11 +45,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import cisneros.nota.data.NoteEntity
 import cisneros.nota.settings.SettingsRepository
 import cisneros.nota.ui.AccessibleEditorScreen
 import cisneros.nota.ui.NoteListScreen
+import cisneros.nota.ui.SeniorCalendarScreen
 import cisneros.nota.ui.TextSizeLevel
 import cisneros.nota.ui.theme.NotaTheme
+import cisneros.nota.ui.toAccessibleSizes
 import cisneros.nota.vm.NoteVm
 import kotlinx.coroutines.launch
 
@@ -90,7 +85,9 @@ private fun AppRoot(
     // Preferencia de tamaño de texto (DataStore) — 0..4
     val settings = remember { SettingsRepository(context) }
     val sizeIdxFromStore by settings.bodySizeLevel.collectAsState(initial = 2)
-    var textSize by remember(sizeIdxFromStore) { mutableStateOf(sizeIndexToLevel(sizeIdxFromStore)) }
+    var textSize by remember(sizeIdxFromStore) {
+        mutableStateOf(sizeIndexToLevel(sizeIdxFromStore))
+    }
     val persistSize: (TextSizeLevel) -> Unit = { level ->
         textSize = level
         scope.launch { settings.setBodySizeLevel(levelToSizeIndex(level)) }
@@ -99,16 +96,19 @@ private fun AppRoot(
     // Título personalizado para la libreta
     var customTitle by rememberSaveable { mutableStateOf("") }
 
+    // Mostrar calendario (solo en modo compacto/medium)
+    var showCalendar by rememberSaveable { mutableStateOf(false) }
+
     // Compartir (WhatsApp → Business → chooser)
     val shareCurrentNote: () -> Unit = {
         state.editing?.let { shareNote(context, it.title, it.body) }
     }
 
-    // Expanded = dos paneles
+    // Layout Expanded = dos paneles (lista + editor)
     if (widthClass == WindowWidthSizeClass.Expanded && state.editing != null) {
         Row(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
-                // Simplificar: usar NoteListScreen directamente sin ListScaffold
+                // Lista de notas
                 NoteListScreen(
                     items = state.items,
                     results = state.results,
@@ -122,10 +122,18 @@ private fun AppRoot(
                 )
             }
             Box(Modifier.weight(1f)) {
-                EditorScaffold(onShare = shareCurrentNote, textSize = textSize, onChangeSize = persistSize) {
+                // Editor con scaffold
+                EditorScaffold(
+                    onShare = shareCurrentNote,
+                    textSize = textSize,
+                    onChangeSize = persistSize
+                ) {
                     AccessibleEditorScreen(
                         vm = vm,
-                        onBackToList = { vm.autoSaveIfDirty(); vm.closeEditor() },
+                        onBackToList = {
+                            vm.autoSaveIfDirty()
+                            vm.closeEditor()
+                        },
                         textSize = textSize
                     )
                 }
@@ -136,23 +144,40 @@ private fun AppRoot(
 
     // Compact / Medium
     if (state.editing == null) {
-        // Usar NoteListScreen directamente con título personalizable
-        NoteListScreen(
-            items = state.items,
-            results = state.results,
-            query = state.query,
-            onQuery = vm::setQuery,
-            onOpen = { id -> vm.edit(id) },
-            onAddNote = { vm.newNote() },
-            textSize = textSize,
-            customTitle = customTitle,
-            onTitleChange = { customTitle = it }
-        )
+        // Sin nota abierta: mostrar lista o calendario
+        if (showCalendar) {
+            CalendarScreen(
+                notes = state.items,
+                textSize = textSize,
+                onBackToList = { showCalendar = false }
+            )
+        } else {
+            NoteListScreen(
+                items = state.items,
+                results = state.results,
+                query = state.query,
+                onQuery = vm::setQuery,
+                onOpen = { id -> vm.edit(id) },
+                onAddNote = { vm.newNote() },
+                textSize = textSize,
+                customTitle = customTitle,
+                onTitleChange = { customTitle = it },
+                onOpenCalendar = { showCalendar = true }
+            )
+        }
     } else {
-        EditorScaffold(onShare = shareCurrentNote, textSize = textSize, onChangeSize = persistSize) {
+        // Pantalla de editor accesible
+        EditorScaffold(
+            onShare = shareCurrentNote,
+            textSize = textSize,
+            onChangeSize = persistSize
+        ) {
             AccessibleEditorScreen(
                 vm = vm,
-                onBackToList = { vm.autoSaveIfDirty(); vm.closeEditor() },
+                onBackToList = {
+                    vm.autoSaveIfDirty()
+                    vm.closeEditor()
+                },
                 textSize = textSize
             )
         }
@@ -184,17 +209,33 @@ private fun EditorScaffold(
                     }
                 },
                 actions = {
+                    // Botón compartir
                     IconButton(onClick = onShare, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Filled.Share, contentDescription = "Compartir nota", modifier = Modifier.size(28.dp))
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = "Compartir nota",
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
+
+                    // Botón configuración / tamaño de texto
                     IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Configuración", modifier = Modifier.size(28.dp))
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = "Configuración",
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
+
+                    // Menú de tamaños de texto
                     TextSizeMenu(
                         expanded = menuOpen,
                         onDismiss = { menuOpen = false },
                         current = textSize,
-                        onSelect = { onChangeSize(it); menuOpen = false }
+                        onSelect = {
+                            onChangeSize(it)
+                            menuOpen = false
+                        }
                     )
                 }
             )
@@ -213,6 +254,57 @@ private fun EditorScaffold(
         Box(modifier = Modifier.padding(paddingValues)) {
             content()
         }
+    }
+}
+
+/**
+ * Pantalla con AppBar para el calendario de notas.
+ */
+@Composable
+private fun CalendarScreen(
+    notes: List<NoteEntity>,
+    textSize: TextSizeLevel,
+    onBackToList: () -> Unit
+) {
+    val sizes = textSize.toAccessibleSizes()
+    val cs = MaterialTheme.colorScheme
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.CalendarMonth,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            "Calendario de notas",
+                            fontSize = sizes.title
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackToList, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.List,
+                            contentDescription = "Ver lista de notas",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            )
+        },
+        containerColor = cs.background
+    ) { padding ->
+        SeniorCalendarScreen(
+            notes = notes,
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp)
+        )
     }
 }
 
@@ -252,7 +344,6 @@ private fun MenuItem(
 
 /* ================== Utilidades ================== */
 
-// DataStore ↔ enum (cinco niveles: 0..4)
 private fun sizeIndexToLevel(idx: Int): TextSizeLevel = when (idx) {
     0 -> TextSizeLevel.SMALLEST
     1 -> TextSizeLevel.SMALLER
@@ -272,7 +363,10 @@ private fun levelToSizeIndex(level: TextSizeLevel): Int = when (level) {
 private fun shareNote(context: Context, title: String, body: String) {
     val text = buildString {
         append(title.trim())
-        if (body.isNotBlank()) { append("\n\n"); append(body.trim()) }
+        if (body.isNotBlank()) {
+            append("\n\n")
+            append(body.trim())
+        }
     }
     val base = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -280,9 +374,15 @@ private fun shareNote(context: Context, title: String, body: String) {
         putExtra(Intent.EXTRA_SUBJECT, title)
     }
     fun tryStart(pkg: String): Boolean = try {
-        context.startActivity(Intent(base).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(
+            Intent(base)
+                .setPackage(pkg)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
         true
-    } catch (_: ActivityNotFoundException) { false }
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
 
     val started = tryStart("com.whatsapp") || tryStart("com.whatsapp.w4b")
     if (!started) {
