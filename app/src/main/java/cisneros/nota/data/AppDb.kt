@@ -1,5 +1,4 @@
 // app/src/main/java/cisneros/nota/data/AppDb.kt
-// CAMBIO: base limpia con version = 1, sin migraciones fantasmas duplicadas.
 
 package cisneros.nota.data
 
@@ -10,7 +9,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [NoteEntity::class],
-    version = 1,
+    version = 2, // ← SUBE LA VERSIÓN
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
@@ -25,7 +24,11 @@ abstract class AppDb : RoomDatabase() {
                     context.applicationContext,
                     AppDb::class.java,
                     "notes.db"
-                ).build().also { INSTANCE = it }
+                )
+                    // ← AQUÍ VA LA FASE 3
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { INSTANCE = it }
             }
     }
 }
