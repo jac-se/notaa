@@ -2,7 +2,9 @@ package cisneros.nota.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -29,6 +31,7 @@ fun AccessibleEditorScreen(
 
     val sizes = textSize.toAccessibleSizes()
     val cs = MaterialTheme.colorScheme
+    val scrollState = rememberScrollState()
 
     BackHandler {
         vm.autoSaveIfDirty()
@@ -38,6 +41,9 @@ fun AccessibleEditorScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
+            .imePadding()
+            .navigationBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -151,37 +157,6 @@ fun AccessibleEditorScreen(
                     maxLines = Int.MAX_VALUE,
                     shape = RoundedCornerShape(12.dp)
                 )
-            }
-        }
-
-        // ===== Acciones inferiores =====
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = {
-                    vm.saveEditing()
-                    onBackToList()
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp)
-            ) {
-                Text("Guardar", fontSize = sizes.button, fontWeight = FontWeight.Bold)
-            }
-
-            OutlinedButton(
-                onClick = {
-                    vm.autoSaveIfDirty()
-                    onBackToList()
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp)
-            ) {
-                Text("Cerrar", fontSize = sizes.button, fontWeight = FontWeight.Bold)
             }
         }
     }

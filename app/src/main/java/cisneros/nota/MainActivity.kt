@@ -1,7 +1,4 @@
-@file:OptIn(
-    androidx.compose.material3.ExperimentalMaterial3Api::class,
-    androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi::class
-)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package cisneros.nota
 
@@ -22,7 +19,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,8 +26,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlin.math.max
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cisneros.nota.data.NoteEntity
 import cisneros.nota.settings.SettingsRepository
@@ -65,8 +60,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             NotaTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    val windowSize = calculateWindowSizeClass(this@MainActivity)
-                    AppRoot(widthClass = windowSize.widthSizeClass)
+                    AppRoot()
                 }
             }
         }
@@ -75,8 +69,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppRoot(
-    vm: NoteVm = viewModel(),
-    widthClass: WindowWidthSizeClass
+    vm: NoteVm = viewModel()
 ) {
     val state by vm.state.collectAsState()
     val context = LocalContext.current
@@ -94,8 +87,6 @@ private fun AppRoot(
     }
 
     // Título personalizado para la libreta
-    var customTitle by rememberSaveable { mutableStateOf("") }
-
     // Mostrar calendario (solo en modo compacto/medium)
     var showCalendar by rememberSaveable { mutableStateOf(false) }
 
@@ -104,11 +95,18 @@ private fun AppRoot(
         state.editing?.let { shareNote(context, it.title, it.body) }
     }
 
-    // Layout Expanded = dos paneles (lista + editor)
-    if (widthClass == WindowWidthSizeClass.Expanded && state.editing != null) {
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f)) {
-                // Lista de notas
+    if (state.editing == null) {
+        // Sin nota abierta: mostrar lista o calendario
+        if (showCalendar) {
+            ResponsivePane {
+                CalendarScreen(
+                    notes = state.items,
+                    textSize = textSize,
+                    onBackToList = { showCalendar = false }
+                )
+            }
+        } else {
+            ResponsivePane {
                 NoteListScreen(
                     items = state.items,
                     results = state.results,
@@ -117,69 +115,55 @@ private fun AppRoot(
                     onOpen = { id -> vm.edit(id) },
                     onAddNote = { vm.newNote() },
                     textSize = textSize,
-                    customTitle = customTitle,
-                    onTitleChange = { customTitle = it }
+                    onOpenCalendar = { showCalendar = true }
                 )
             }
-            Box(Modifier.weight(1f)) {
-                // Editor con scaffold
-                EditorScaffold(
-                    onShare = shareCurrentNote,
-                    textSize = textSize,
-                    onChangeSize = persistSize
-                ) {
-                    AccessibleEditorScreen(
-                        vm = vm,
-                        onBackToList = {
-                            vm.autoSaveIfDirty()
-                            vm.closeEditor()
-                        },
-                        textSize = textSize
-                    )
-                }
-            }
-        }
-        return
-    }
-
-    // Compact / Medium
-    if (state.editing == null) {
-        // Sin nota abierta: mostrar lista o calendario
-        if (showCalendar) {
-            CalendarScreen(
-                notes = state.items,
-                textSize = textSize,
-                onBackToList = { showCalendar = false }
-            )
-        } else {
-            NoteListScreen(
-                items = state.items,
-                results = state.results,
-                query = state.query,
-                onQuery = vm::setQuery,
-                onOpen = { id -> vm.edit(id) },
-                onAddNote = { vm.newNote() },
-                textSize = textSize,
-                customTitle = customTitle,
-                onTitleChange = { customTitle = it },
-                onOpenCalendar = { showCalendar = true }
-            )
         }
     } else {
         // Pantalla de editor accesible
-        EditorScaffold(
-            onShare = shareCurrentNote,
-            textSize = textSize,
-            onChangeSize = persistSize
+        ResponsivePane {
+            EditorScaffold(
+                onShare = shareCurrentNote,
+                textSize = textSize,
+                onChangeSize = persistSize
+            ) {
+                AccessibleEditorScreen(
+                    vm = vm,
+                    onBackToList = {
+                        vm.autoSaveIfDirty()
+                        vm.closeEditor()
+                    },
+                    textSize = textSize
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResponsivePane(
+    content: @Composable () -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val sidePadding = when {
+            maxWidth >= 1000.dp -> 40.dp
+            maxWidth >= 700.dp -> 24.dp
+            else -> 0.dp
+        }
+        val availableWidth = maxWidth - (sidePadding * 2)
+        val contentWidth = max(availableWidth.value.coerceAtMost(820f), 0f).dp
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
         ) {
-            AccessibleEditorScreen(
-                vm = vm,
-                onBackToList = {
-                    vm.autoSaveIfDirty()
-                    vm.closeEditor()
-                },
-                textSize = textSize
-            )
+            Box(
+                modifier = Modifier
+                    .width(contentWidth)
+                    .fillMaxHeight()
+            ) {
+                content()
+            }
         }
     }
 }
@@ -209,7 +193,6 @@ private fun EditorScaffold(
                     }
                 },
                 actions = {
-                    // Botón compartir
                     IconButton(onClick = onShare, modifier = Modifier.size(48.dp)) {
                         Icon(
                             Icons.Filled.Share,
@@ -218,7 +201,6 @@ private fun EditorScaffold(
                         )
                     }
 
-                    // Botón configuración / tamaño de texto
                     IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(48.dp)) {
                         Icon(
                             Icons.Filled.Settings,
@@ -226,8 +208,6 @@ private fun EditorScaffold(
                             modifier = Modifier.size(28.dp)
                         )
                     }
-
-                    // Menú de tamaños de texto
                     TextSizeMenu(
                         expanded = menuOpen,
                         onDismiss = { menuOpen = false },
@@ -239,16 +219,6 @@ private fun EditorScaffold(
                     )
                 }
             )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onShare,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Compartir", style = MaterialTheme.typography.bodyLarge)
-            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
@@ -384,9 +354,5 @@ private fun shareNote(context: Context, title: String, body: String) {
         false
     }
 
-    val started = tryStart("com.whatsapp") || tryStart("com.whatsapp.w4b")
-    if (!started) {
-        val chooser = Intent.createChooser(base, "Compartir nota")
-        context.startActivity(chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
+    tryStart("com.whatsapp")
 }

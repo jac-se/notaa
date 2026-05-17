@@ -2,10 +2,18 @@
 
 package cisneros.nota.ui
 
-// ---------- IMPORTS ----------
-
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
@@ -14,12 +22,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
@@ -42,15 +61,12 @@ fun NoteListScreen(
     onOpen: (Long) -> Unit,
     onAddNote: () -> Unit,
     textSize: TextSizeLevel,
-    customTitle: String = "",
-    onTitleChange: (String) -> Unit = {},
     onOpenCalendar: () -> Unit = {}
 ) {
     val sizes = textSize.toAccessibleSizes()
     val list = if (query.isBlank()) items else results
     val cs = MaterialTheme.colorScheme
     val focus = LocalFocusManager.current
-
     val scrollBehavior = pinnedScrollBehavior()
 
     Scaffold(
@@ -59,62 +75,24 @@ fun NoteListScreen(
             TopAppBar(
                 scrollBehavior = scrollBehavior,
                 title = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.List,
                             contentDescription = null,
                             modifier = Modifier.padding(end = 12.dp),
                             tint = cs.onSurface
                         )
-
-                        // Título editable de la libreta
-                        OutlinedTextField(
-                            value = customTitle,
-                            onValueChange = onTitleChange,
-                            singleLine = true,
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 56.dp)
-                                .semantics { contentDescription = "Título de la libreta" },
-                            placeholder = {
-                                Text(
-                                    text = "Mi Libreta",
-                                    fontSize = sizes.title,
-                                    color = cs.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
-                            textStyle = LocalTextStyle.current.copy(
-                                fontSize = sizes.title,
-                                fontWeight = FontWeight.Bold,
-                                color = cs.onSurface
-                            ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent,
-                                errorBorderColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedTextColor = cs.onSurface,
-                                unfocusedTextColor = cs.onSurface
-                            ),
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Sentences,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = { focus.clearFocus() }
-                            )
+                        Text(
+                            text = "Notas",
+                            fontSize = sizes.title,
+                            fontWeight = FontWeight.Bold,
+                            color = cs.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },
                 actions = {
-                    // 🔔 Botón de calendario ARRIBA a la derecha
                     IconButton(
                         onClick = onOpenCalendar,
                         modifier = Modifier.semantics {
@@ -135,17 +113,16 @@ fun NoteListScreen(
             )
         },
         floatingActionButton = {
-            // Solo FAB de "Nueva nota" (el calendario ya está arriba)
-            ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = onAddNote,
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("Nueva nota", fontSize = sizes.button) },
                 modifier = Modifier
                     .padding(16.dp)
                     .semantics { contentDescription = "Nueva nota" },
                 containerColor = cs.primary,
                 contentColor = cs.onPrimary
-            )
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+            }
         },
         containerColor = cs.background
     ) { padding ->
@@ -154,7 +131,6 @@ fun NoteListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Campo de búsqueda
             OutlinedTextField(
                 value = query,
                 onValueChange = onQuery,
