@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -131,15 +132,30 @@ fun NoteListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            Text(
+                text = "Buscar nota",
+                fontSize = sizes.body,
+                fontWeight = FontWeight.SemiBold,
+                color = cs.onSurface,
+                modifier = Modifier.padding(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 10.dp)
+            )
+
             OutlinedTextField(
                 value = query,
                 onValueChange = onQuery,
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .heightIn(min = 56.dp)
+                    .padding(start = 20.dp, end = 20.dp, bottom = 14.dp)
+                    .heightIn(min = 64.dp)
                     .semantics { contentDescription = "Buscar notas" },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = null,
+                        tint = cs.onSurfaceVariant
+                    )
+                },
                 placeholder = {
                     Text(
                         text = "Buscar…",
