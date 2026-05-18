@@ -2,9 +2,8 @@ package cisneros.nota.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -16,6 +15,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cisneros.nota.vm.NoteVm
@@ -31,7 +32,6 @@ fun AccessibleEditorScreen(
 
     val sizes = textSize.toAccessibleSizes()
     val cs = MaterialTheme.colorScheme
-    val scrollState = rememberScrollState()
 
     BackHandler {
         vm.autoSaveIfDirty()
@@ -41,7 +41,6 @@ fun AccessibleEditorScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
             .imePadding()
             .navigationBarsPadding()
             .padding(16.dp),
@@ -139,7 +138,12 @@ fun AccessibleEditorScreen(
                         fontWeight = FontWeight.SemiBold
                     ),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Text
+                    )
                 )
 
                 OutlinedTextField(
@@ -155,7 +159,12 @@ fun AccessibleEditorScreen(
                         .heightIn(min = 160.dp),
                     minLines = 6,
                     maxLines = Int.MAX_VALUE,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Text
+                    )
                 )
             }
         }

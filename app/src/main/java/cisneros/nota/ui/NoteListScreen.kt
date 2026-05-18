@@ -177,6 +177,8 @@ fun NoteListScreen(
                     unfocusedTextColor = cs.onSurface
                 ),
                 keyboardOptions = KeyboardOptions(
+                    autoCorrectEnabled = false,
+                    capitalization = KeyboardCapitalization.None,
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Search
                 ),
