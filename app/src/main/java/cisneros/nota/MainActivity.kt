@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -239,16 +238,6 @@ private fun EditorScaffold(
                     )
                 }
             )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onShare,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Compartir", style = MaterialTheme.typography.bodyLarge)
-            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
