@@ -1,6 +1,8 @@
 package cisneros.nota.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,6 +45,7 @@ fun AccessibleEditorScreen(
             .fillMaxSize()
             .imePadding()
             .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -116,16 +119,14 @@ fun AccessibleEditorScreen(
 
         // ===== Campos de texto =====
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = cs.surface)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -155,10 +156,9 @@ fun AccessibleEditorScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .heightIn(min = 160.dp),
+                        .heightIn(min = 220.dp, max = 420.dp),
                     minLines = 6,
-                    maxLines = Int.MAX_VALUE,
+                    maxLines = 14,
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,

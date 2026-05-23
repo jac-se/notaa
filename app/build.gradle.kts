@@ -13,8 +13,8 @@ android {
         applicationId = "cisneros.nota"
         minSdk = 29
         targetSdk = 35
-        versionCode = 19
-        versionName = "1.0.19"
+        versionCode = 22
+        versionName = "1.0.22"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

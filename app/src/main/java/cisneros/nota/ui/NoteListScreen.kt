@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -193,6 +194,7 @@ fun NoteListScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .imePadding()
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -204,12 +206,14 @@ fun NoteListScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .imePadding(),
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(list, key = { it.id }) { note ->
-                        val displayTitle = note.title.takeIf { it.isNotBlank() } ?: "Sin título"
+                        val displayTitle = note.visibleTitle()
                         val legible = DateFormats.legibleOmitYear(note.createdAt)
                         val rel = DateFormats.relativa(note.createdAt)
 
@@ -246,5 +250,17 @@ fun NoteListScreen(
                 }
             }
         }
+    }
+}
+
+private fun NoteEntity.visibleTitle(): String {
+    val bodyPreview = body
+        .trim()
+        .replace(Regex("\\s+"), " ")
+
+    return when {
+        title.isNotBlank() -> title
+        bodyPreview.isNotBlank() -> bodyPreview.take(40)
+        else -> "Sin título"
     }
 }
