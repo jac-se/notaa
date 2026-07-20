@@ -12,6 +12,9 @@ pluginManagement {
         id("org.jetbrains.compose") version "1.6.0" apply false
     }
 }
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+}
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)

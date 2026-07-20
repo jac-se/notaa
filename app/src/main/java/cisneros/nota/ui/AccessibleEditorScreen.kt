@@ -2,6 +2,7 @@ package cisneros.nota.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cisneros.nota.vm.NoteVm
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AccessibleEditorScreen(
     vm: NoteVm,
@@ -45,6 +47,7 @@ fun AccessibleEditorScreen(
             .fillMaxSize()
             .imePadding()
             .navigationBarsPadding()
+            .imeNestedScroll()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
