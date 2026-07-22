@@ -130,7 +130,6 @@ private fun AppRoot(
                 AccessibleEditorScreen(
                     vm = vm,
                     onBackToList = {
-                        vm.autoSaveIfDirty()
                         vm.closeEditor()
                     },
                     textSize = textSize

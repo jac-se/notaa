@@ -114,6 +114,7 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
             body = body ?: current.body
         )
         _state.update { it.copy(editing = updated) }
+        autoSaveIfDirty()
     }
 
     // =========================
@@ -144,33 +145,44 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
     }
 
     fun saveEditing() {
-        val e = _state.value.editing ?: return
-
-        // Si está completamente vacía, no guardamos nada
-        if (e.title.isBlank() && e.body.isBlank()) {
-            _state.update { it.copy(editing = null) }
-            return
-        }
-
-        viewModelScope.launch {
-            val id = upsertFromVm(e)
-            _state.update { st ->
-                st.copy(
-                    editing = st.editing?.copy(id = id)
-                )
-            }
-        }
+        persistEditing(_state.value.editing ?: return)
     }
 
     /** Programa guardado automático tras [delayMs] ms sin más cambios. */
     fun autoSaveIfDirty(delayMs: Long = 800L) {
         autoSaveJob?.cancel()
-        val e = _state.value.editing ?: return
-        if (e.title.isBlank() && e.body.isBlank()) return
+        val snapshot = _state.value.editing ?: return
+        if (snapshot.title.isBlank() && snapshot.body.isBlank()) return
 
         autoSaveJob = viewModelScope.launch {
             delay(delayMs)
-            saveEditing()
+            persistSnapshot(snapshot)
+        }
+    }
+
+    /** Guarda inmediatamente el contenido actual, por ejemplo al pausar la Activity. */
+    fun flushAutoSave() {
+        autoSaveJob?.cancel()
+        val snapshot = _state.value.editing ?: return
+        if (snapshot.title.isBlank() && snapshot.body.isBlank()) return
+        autoSaveJob = viewModelScope.launch { persistSnapshot(snapshot) }
+    }
+
+    private fun persistEditing(snapshot: EditingNote) {
+        autoSaveJob?.cancel()
+        if (snapshot.title.isBlank() && snapshot.body.isBlank()) return
+        autoSaveJob = viewModelScope.launch { persistSnapshot(snapshot) }
+    }
+
+    private suspend fun persistSnapshot(snapshot: EditingNote) {
+        val id = upsertFromVm(snapshot)
+        _state.update { current ->
+            val editing = current.editing
+            if (editing != null && editing.createdAt == snapshot.createdAt) {
+                current.copy(editing = editing.copy(id = id))
+            } else {
+                current
+            }
         }
     }
 
@@ -193,6 +205,12 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeEditor() {
+        autoSaveJob?.cancel()
+        val snapshot = _state.value.editing
         _state.update { it.copy(editing = null) }
+
+        if (snapshot != null && (snapshot.title.isNotBlank() || snapshot.body.isNotBlank())) {
+            autoSaveJob = viewModelScope.launch { upsertFromVm(snapshot) }
+        }
     }
 }

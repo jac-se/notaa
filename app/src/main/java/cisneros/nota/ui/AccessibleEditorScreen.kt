@@ -1,9 +1,7 @@
 package cisneros.nota.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,6 +11,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -22,6 +21,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import cisneros.nota.vm.NoteVm
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -36,19 +38,26 @@ fun AccessibleEditorScreen(
 
     val sizes = textSize.toAccessibleSizes()
     val cs = MaterialTheme.colorScheme
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, vm) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                vm.flushAutoSave()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     BackHandler {
-        vm.autoSaveIfDirty()
         onBackToList()
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .imePadding()
             .navigationBarsPadding()
-            .imeNestedScroll()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -68,7 +77,6 @@ fun AccessibleEditorScreen(
             ) {
                 IconButton(
                     onClick = {
-                        vm.autoSaveIfDirty()
                         onBackToList()
                     }
                 ) {
@@ -90,10 +98,7 @@ fun AccessibleEditorScreen(
 
                 // Botón guardar
                 IconButton(
-                    onClick = {
-                        vm.saveEditing()
-                        onBackToList()
-                    }
+                    onClick = onBackToList
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Save,
@@ -120,16 +125,19 @@ fun AccessibleEditorScreen(
             }
         }
 
-        // ===== Campos de texto =====
+        // El formulario se redimensiona con el IME; Contenido gestiona su propio scroll.
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .imePadding(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = cs.surface)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -159,9 +167,8 @@ fun AccessibleEditorScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 220.dp, max = 420.dp),
+                        .weight(1f),
                     minLines = 6,
-                    maxLines = 14,
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,

@@ -12,15 +12,16 @@ android {
     defaultConfig {
         applicationId = "cisneros.nota"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 23
-        versionName = "1.0.23"
+        targetSdk = 34
+        versionCode = 24
+        versionName = "1.0.24"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
