@@ -6,7 +6,10 @@ import java.util.*
 
 object DateFormats {
     private val tz = TimeZone.getTimeZone("America/Mexico_City")
-    private val localeMx = Locale("es", "MX")
+    private val localeMx = Locale.Builder()
+        .setLanguage("es")
+        .setRegion("MX")
+        .build()
 
     private val sameYearFmt = SimpleDateFormat("EEE d 'de' MMM, HH:mm", localeMx).apply {
         timeZone = tz

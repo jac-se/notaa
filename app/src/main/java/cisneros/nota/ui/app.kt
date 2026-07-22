@@ -51,7 +51,7 @@ fun App(vm: NoteVm) {
 
     // Zona/locale MX para mostrar en header (informativo)
     val zoneMx = remember { ZoneId.of("America/Mexico_City") }
-    val localeMx = remember { Locale("es", "MX") }
+    val localeMx = remember { Locale.of("es", "MX") }
     val dateOnlyFmt = remember {
         DateTimeFormatter.ofPattern(
             "EEEE d 'de' MMMM yyyy",

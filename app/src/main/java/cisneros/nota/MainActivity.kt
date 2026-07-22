@@ -14,7 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
@@ -261,7 +261,7 @@ private fun CalendarScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackToList, modifier = Modifier.size(48.dp)) {
                         Icon(
-                            imageVector = Icons.Filled.List,
+                            imageVector = Icons.AutoMirrored.Filled.List,
                             contentDescription = "Ver lista de notas",
                             modifier = Modifier.size(28.dp)
                         )

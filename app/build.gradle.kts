@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "cisneros.nota"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "cisneros.nota"
         minSdk = 29
-        targetSdk = 34
-        versionCode = 24
-        versionName = "1.0.24"
+        targetSdk = 36
+        versionCode = 28
+        versionName = "1.0.28"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -22,6 +22,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -48,7 +51,6 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.activity.compose)
 
@@ -85,5 +87,4 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
 }

@@ -6,7 +6,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val LOCALE_MX = Locale("es", "MX")
+private val LOCALE_MX = Locale.of("es", "MX")
 private val ZONE = ZoneId.systemDefault()
 
 // sábado, 17 de agosto de 2025, 10:45 a. m.
