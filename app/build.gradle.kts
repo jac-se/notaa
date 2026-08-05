@@ -1,20 +1,21 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.dokka) // documenatacion
 }
 
 android {
     namespace = "cisneros.nota"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "cisneros.nota"
-        minSdk = 29
-        targetSdk = 36
-        versionCode = 28
-        versionName = "1.0.28"
+        // Android 8.0+. Amplía la disponibilidad sin renunciar a java.time nativo.
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 29
+        versionName = "1.0.29"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -37,10 +38,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions { jvmTarget = "17" }
-
     buildFeatures { compose = true }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 }
 
 dependencies {

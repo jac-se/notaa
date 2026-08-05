@@ -1,7 +1,5 @@
 package cisneros.nota.ui
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -27,12 +25,11 @@ data class NoteUiState(
 fun NoteEntity?.toNoteUiState(): NoteUiState =
     if (this == null) NoteUiState() else NoteUiState(currentId = this.id, title = this.title, body = this.body)
 
-@RequiresApi(Build.VERSION_CODES.BAKLAVA)
 private fun defaultNoteTitleNowMx(): String {
     val tz = TimeZone.getTimeZone("America/Mexico_City")
     val sdf = SimpleDateFormat(
         "dd/MM/yyyy HH:mm",
-        Locale.of("es", "MX")
+        Locale.Builder().setLanguage("es").setRegion("MX").build()
     )
     sdf.timeZone = tz
     return sdf.format(Date())

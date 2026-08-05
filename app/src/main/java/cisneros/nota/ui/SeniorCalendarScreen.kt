@@ -40,7 +40,9 @@ fun SeniorCalendarScreen(
     modifier: Modifier = Modifier
 ) {
     val zoneMx = remember { ZoneId.of("America/Mexico_City") }
-    val localeMx = remember { Locale.of("es", "MX") }
+    val localeMx = remember {
+        Locale.Builder().setLanguage("es").setRegion("MX").build()
+    }
 
     // Agrupar notas por fecha (solo año-mes-día)
     val notesByDate: Map<LocalDate, List<NoteEntity>> = remember(notes) {
