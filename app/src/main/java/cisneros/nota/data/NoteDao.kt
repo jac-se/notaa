@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
+    @Query("SELECT * FROM notes ORDER BY createdAt DESC")
+    suspend fun allForBackup(): List<NoteEntity>
+
 
     // ===== LISTA PRINCIPAL (notas activas) =====
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY createdAt DESC")
