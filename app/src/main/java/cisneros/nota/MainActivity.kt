@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cisneros.nota.data.NoteEntity
 import cisneros.nota.settings.SettingsRepository
 import cisneros.nota.ui.AccessibleEditorScreen
+import cisneros.nota.ui.ManualBackupScreen
 import cisneros.nota.ui.NoteListScreen
 import cisneros.nota.ui.SeniorCalendarScreen
 import cisneros.nota.ui.TextSizeLevel
@@ -89,13 +90,16 @@ private fun AppRoot(
     // Título personalizado para la libreta
     // Mostrar calendario (solo en modo compacto/medium)
     var showCalendar by rememberSaveable { mutableStateOf(false) }
+    var showBackup by rememberSaveable { mutableStateOf(false) }
 
     // Compartir (WhatsApp → Business → chooser)
     val shareCurrentNote: () -> Unit = {
         state.editing?.let { shareNote(context, it.title, it.body) }
     }
 
-    if (state.editing == null) {
+    if (showBackup) {
+        ResponsivePane { ManualBackupScreen(onBack = { showBackup = false }) }
+    } else if (state.editing == null) {
         // Sin nota abierta: mostrar lista o calendario
         if (showCalendar) {
             ResponsivePane {
@@ -107,6 +111,11 @@ private fun AppRoot(
             }
         } else {
             ResponsivePane {
+                Column {
+                    androidx.compose.material3.TextButton(
+                        onClick = { showBackup = true },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                    ) { Text("Guardar o recuperar mis notas") }
                 NoteListScreen(
                     items = state.items,
                     results = state.results,
@@ -117,6 +126,7 @@ private fun AppRoot(
                     textSize = textSize,
                     onOpenCalendar = { showCalendar = true }
                 )
+                }
             }
         }
     } else {
