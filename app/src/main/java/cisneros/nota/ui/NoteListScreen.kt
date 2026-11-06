@@ -23,9 +23,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +43,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarDefaults.pinnedScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -63,13 +71,18 @@ fun NoteListScreen(
     onOpen: (Long) -> Unit,
     onAddNote: () -> Unit,
     textSize: TextSizeLevel,
-    onOpenCalendar: () -> Unit = {}
+    onOpenCalendar: () -> Unit = {},
+    onMedication: () -> Unit = {},
+    onTestNotifications: () -> Unit = {},
+    onBackup: () -> Unit = {},
+    onRestore: () -> Unit = {}
 ) {
     val sizes = textSize.toAccessibleSizes()
     val list = if (query.isBlank()) items else results
     val cs = MaterialTheme.colorScheme
     val focus = LocalFocusManager.current
     val scrollBehavior = pinnedScrollBehavior()
+    var moreMenuOpen by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -105,6 +118,29 @@ fun NoteListScreen(
                             imageVector = Icons.Filled.CalendarMonth,
                             contentDescription = null,
                             tint = cs.onSurface
+                        )
+                    }
+                    IconButton(onClick = onMedication) {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Ver recordatorios")
+                    }
+                    IconButton(onClick = { moreMenuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones")
+                    }
+                    DropdownMenu(
+                        expanded = moreMenuOpen,
+                        onDismissRequest = { moreMenuOpen = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Probar avisos y permisos", fontSize = sizes.body) },
+                            onClick = { moreMenuOpen = false; onTestNotifications() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Guardar copia de seguridad", fontSize = sizes.body) },
+                            onClick = { moreMenuOpen = false; onBackup() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Recuperar notas de una copia", fontSize = sizes.body) },
+                            onClick = { moreMenuOpen = false; onRestore() }
                         )
                     }
                 },

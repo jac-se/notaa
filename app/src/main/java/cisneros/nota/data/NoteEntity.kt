@@ -19,5 +19,6 @@ data class NoteEntity(
     val title: String,                                    // Título de la nota
     @ColumnInfo(name = "content") val body: String,       // Renombrada a 'content' en BD
     val createdAt: Long = System.currentTimeMillis(),     // Marca de tiempo de creación
-    @ColumnInfo(name = "deletedAt") val deletedAt: Long? = null // null => activa; no null => papelera
+    @ColumnInfo(name = "deletedAt") val deletedAt: Long? = null, // null => activa; no null => papelera
+    @ColumnInfo(name = "reminderAt") val reminderAt: Long? = null // Momento del recordatorio; null si no hay
 )

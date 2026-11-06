@@ -6,14 +6,17 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 
+@TypeConverters(ReminderConverters::class)
 @Database(
-    entities = [NoteEntity::class],
-    version = 2, // ← SUBE LA VERSIÓN
+    entities = [NoteEntity::class, ReminderEntity::class],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
     abstract fun noteDao(): NoteDao
+    abstract fun reminderDao(): ReminderDao
 
     companion object {
         @Volatile private var INSTANCE: AppDb? = null
@@ -26,7 +29,7 @@ abstract class AppDb : RoomDatabase() {
                     "notes.db"
                 )
                     // ← AQUÍ VA LA FASE 3
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { INSTANCE = it }
             }

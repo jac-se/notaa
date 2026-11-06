@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cisneros.nota.data.AppDb
 import cisneros.nota.data.NoteEntity
+import cisneros.nota.data.ReminderEntity
+import cisneros.nota.work.ReminderScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +20,8 @@ data class EditingNote(
     val id: Long? = null,
     val title: String = "",
     val body: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val reminderAt: Long? = null
 )
 
 // Estado de la pantalla principal
@@ -26,6 +29,7 @@ data class UiState(
     val items: List<NoteEntity> = emptyList(),   // lista completa
     val results: List<NoteEntity> = emptyList(), // resultados de búsqueda
     val query: String = "",
+    val reminders: List<ReminderEntity> = emptyList(),
     val editing: EditingNote? = null             // null = lista, no hay editor abierto
 )
 
@@ -33,6 +37,7 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
 
     // ---- DB/DAO ----
     private val dao = AppDb.get(app).noteDao()
+    private val reminderDao = AppDb.get(app).reminderDao()
 
     // ---- Estado ----
     private val _state = MutableStateFlow(UiState())
@@ -47,6 +52,11 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             dao.streamAll().collect { notes ->
                 _state.update { it.copy(items = notes) }
+            }
+        }
+        viewModelScope.launch {
+            reminderDao.streamAll().collect { reminders ->
+                _state.update { it.copy(reminders = reminders) }
             }
         }
     }
@@ -79,7 +89,8 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
                     id = null,
                     title = "",
                     body = "",
-                    createdAt = System.currentTimeMillis()
+                    createdAt = System.currentTimeMillis(),
+                    reminderAt = null
                 )
             )
         }
@@ -97,7 +108,8 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
                         id = note.id,
                         title = note.title,
                         body = note.body,
-                        createdAt = note.createdAt
+                        createdAt = note.createdAt,
+                        reminderAt = note.reminderAt
                     )
                 )
             }
@@ -107,11 +119,12 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
     // =========================
     // ACTUALIZAR CAMPOS DEL EDITOR
     // =========================
-    fun updateEditing(title: String? = null, body: String? = null) {
+    fun updateEditing(title: String? = null, body: String? = null, reminderAt: Long? = _state.value.editing?.reminderAt) {
         val current = _state.value.editing ?: return
         val updated = current.copy(
             title = title ?: current.title,
-            body = body ?: current.body
+            body = body ?: current.body,
+            reminderAt = reminderAt
         )
         _state.update { it.copy(editing = updated) }
         autoSaveIfDirty()
@@ -127,7 +140,8 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
                 NoteEntity(
                     title = e.title.ifBlank { "" },
                     body = e.body,
-                    createdAt = e.createdAt
+                    createdAt = e.createdAt,
+                    reminderAt = e.reminderAt
                 )
             )
         } else {
@@ -137,7 +151,8 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
                     id = e.id,
                     title = e.title,
                     body = e.body,
-                    createdAt = e.createdAt
+                    createdAt = e.createdAt,
+                    reminderAt = e.reminderAt
                 )
             )
             e.id
@@ -204,13 +219,59 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Recupera una copia sin sobrescribir las notas actuales. */
+    fun importBackup(notes: List<NoteEntity>, reminders: List<ReminderEntity> = emptyList()) {
+        viewModelScope.launch {
+            notes.forEach { note ->
+                if (!dao.exists(note.title, note.body, note.createdAt)) {
+                    dao.insert(note.copy(id = 0))
+                }
+            }
+            reminders.forEach { reminder ->
+                if (!reminderDao.exists(reminder.category, reminder.description, reminder.triggerAt)) {
+                    val id = reminderDao.insert(reminder.copy(id = 0))
+                    ReminderScheduler.schedule(getApplication(), reminder.copy(id = id))
+                }
+            }
+        }
+    }
+
+    fun createReminder(reminder: ReminderEntity) {
+        viewModelScope.launch {
+            val id = reminderDao.insert(reminder)
+            ReminderScheduler.schedule(getApplication(), reminder.copy(id = id))
+        }
+    }
+
+    fun updateReminder(reminder: ReminderEntity) {
+        viewModelScope.launch {
+            reminderDao.update(reminder)
+            ReminderScheduler.cancel(getApplication(), reminder.id)
+            ReminderScheduler.schedule(getApplication(), reminder)
+        }
+    }
+
+    fun completeReminder(id: Long) {
+        viewModelScope.launch {
+            reminderDao.setCompleted(id, true)
+            ReminderScheduler.cancel(getApplication(), id)
+        }
+    }
+
+    fun deleteReminder(id: Long) {
+        viewModelScope.launch {
+            ReminderScheduler.cancel(getApplication(), id)
+            reminderDao.deleteById(id)
+        }
+    }
+
     fun closeEditor() {
         autoSaveJob?.cancel()
         val snapshot = _state.value.editing
         _state.update { it.copy(editing = null) }
 
         if (snapshot != null && (snapshot.title.isNotBlank() || snapshot.body.isNotBlank())) {
-            autoSaveJob = viewModelScope.launch { upsertFromVm(snapshot) }
+            autoSaveJob = viewModelScope.launch { persistSnapshot(snapshot) }
         }
     }
 }

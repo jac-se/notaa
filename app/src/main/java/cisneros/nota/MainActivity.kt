@@ -5,7 +5,14 @@ package cisneros.nota
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,14 +24,18 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,16 +51,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import androidx.lifecycle.viewmodel.compose.viewModel
+import cisneros.nota.data.JsonBackup
 import cisneros.nota.data.NoteEntity
+import cisneros.nota.data.ReminderEntity
 import cisneros.nota.settings.SettingsRepository
 import cisneros.nota.ui.AccessibleEditorScreen
 import cisneros.nota.ui.NoteListScreen
+import cisneros.nota.ui.ReminderListScreen
 import cisneros.nota.ui.SeniorCalendarScreen
 import cisneros.nota.ui.TextSizeLevel
 import cisneros.nota.ui.theme.NotaTheme
 import cisneros.nota.ui.toAccessibleSizes
 import cisneros.nota.vm.NoteVm
+import cisneros.nota.work.ReminderScheduler
+import java.util.Calendar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -74,6 +92,41 @@ private fun AppRoot(
     val state by vm.state.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val backupFile = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val saved = runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use {
+                        it.write(JsonBackup.toJson(state.items, state.reminders).toByteArray(Charsets.UTF_8))
+                    } ?: error("No se pudo abrir el archivo")
+                }
+            }.isSuccess
+            Toast.makeText(
+                context,
+                if (saved) "Copia de seguridad guardada" else "No se pudo guardar la copia",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    val restoreFile = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val notes = runCatching {
+                withContext(Dispatchers.IO) { JsonBackup.readFromUri(context.contentResolver, uri) }
+            }.getOrNull()
+            if (notes == null) {
+                Toast.makeText(context, "La copia no es válida", Toast.LENGTH_LONG).show()
+            } else {
+                vm.importBackup(notes.notes, notes.reminders)
+                Toast.makeText(context, "Recuperando copia de seguridad", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     // Preferencia de tamaño de texto (DataStore) — 0..4
     val settings = remember { SettingsRepository(context) }
@@ -89,13 +142,36 @@ private fun AppRoot(
     // Título personalizado para la libreta
     // Mostrar calendario (solo en modo compacto/medium)
     var showCalendar by rememberSaveable { mutableStateOf(false) }
+    var showReminders by rememberSaveable { mutableStateOf(false) }
+    var showTestNotifications by rememberSaveable { mutableStateOf(false) }
 
     // Compartir (WhatsApp → Business → chooser)
     val shareCurrentNote: () -> Unit = {
         state.editing?.let { shareNote(context, it.title, it.body) }
     }
 
-    if (state.editing == null) {
+    if (showTestNotifications) {
+        ResponsivePane {
+            cisneros.nota.ui.TestNotificationsScreen(
+                textSize = textSize,
+                onBack = { showTestNotifications = false }
+            )
+        }
+    } else if (showReminders) {
+        ResponsivePane {
+            ReminderListScreen(
+                reminders = state.reminders,
+                textSize = textSize,
+                onBack = { showReminders = false },
+                onSave = { reminder ->
+                    if (reminder.id == 0L) vm.createReminder(reminder) else vm.updateReminder(reminder)
+                },
+                onComplete = vm::completeReminder,
+                onDelete = vm::deleteReminder,
+                onTestNotifications = { showTestNotifications = true }
+            )
+        }
+    } else if (state.editing == null) {
         // Sin nota abierta: mostrar lista o calendario
         if (showCalendar) {
             ResponsivePane {
@@ -115,7 +191,11 @@ private fun AppRoot(
                     onOpen = { id -> vm.edit(id) },
                     onAddNote = { vm.newNote() },
                     textSize = textSize,
-                    onOpenCalendar = { showCalendar = true }
+                    onOpenCalendar = { showCalendar = true },
+                    onMedication = { showReminders = true },
+                    onTestNotifications = { showTestNotifications = true },
+                    onBackup = { backupFile.launch("mis-notas.json") },
+                    onRestore = { restoreFile.launch("application/json") }
                 )
             }
         }
@@ -137,7 +217,9 @@ private fun AppRoot(
             }
         }
     }
+
 }
+
 
 @Composable
 private fun ResponsivePane(

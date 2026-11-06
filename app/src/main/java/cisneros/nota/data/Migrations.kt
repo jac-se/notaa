@@ -74,3 +74,28 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         }
     }
 }
+
+/** Añade el recordatorio opcional sin modificar las notas existentes. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE notes ADD COLUMN reminderAt INTEGER")
+    }
+}
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT NOT NULL,
+                triggerAt INTEGER NOT NULL,
+                repeat TEXT NOT NULL,
+                completed INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}

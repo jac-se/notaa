@@ -14,8 +14,8 @@ android {
         // Android 8.0+. Amplía la disponibilidad sin renunciar a java.time nativo.
         minSdk = 26
         targetSdk = 37
-        versionCode = 29
-        versionName = "1.0.29"
+        versionCode = 30
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

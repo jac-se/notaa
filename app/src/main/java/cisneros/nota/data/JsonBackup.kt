@@ -1,77 +1,90 @@
-package cisneros.nota.data // Paquete de datos
+package cisneros.nota.data
 
-import android.content.ContentResolver // Para leer URIs del SAF
-import android.content.Context         // Contexto para archivos internos
-import android.net.Uri                 // Uri del SAF
-import org.json.JSONArray              // JSON array simple
-import org.json.JSONObject             // JSON object simple
+import android.content.ContentResolver
+import android.net.Uri
+import org.json.JSONArray
+import org.json.JSONObject
 
-/**
- * Utilidades para exportar/importar notas en JSON.
- * Implementación mínima (org.json) para evitar dependencias extra.
- */
+data class BackupData(
+    val notes: List<NoteEntity>,
+    val reminders: List<ReminderEntity>,
+)
+
+/** Respaldo local. Lee tanto el formato histórico (un arreglo de notas) como el nuevo. */
 object JsonBackup {
+    fun toJson(notes: List<NoteEntity>, reminders: List<ReminderEntity>): String {
+        val root = JSONObject()
+        root.put("formatVersion", 2)
+        root.put("notes", JSONArray(notes.map(::noteToJson)))
+        root.put("reminders", JSONArray(reminders.map(::reminderToJson)))
+        return root.toString(2)
+    }
 
-    /** Convierte una lista de notas a un JSON (array) legible con indentación. */
-    fun toJson(list: List<NoteEntity>): String {
-        val arr = JSONArray()
-        list.forEach { n ->
-            val o = JSONObject()
-            o.put("id", n.id)
-            o.put("title", n.title)
-            o.put("body", n.body)
-            o.put("createdAt", n.createdAt)
-            if (n.deletedAt != null) o.put("deletedAt", n.deletedAt) else o.put("deletedAt", JSONObject.NULL)
-            arr.put(o)
+    fun fromJson(json: String): BackupData {
+        if (json.isBlank()) return BackupData(emptyList(), emptyList())
+        val trimmed = json.trim()
+        if (trimmed.startsWith("[")) {
+            return BackupData(notesFromArray(JSONArray(trimmed)), emptyList())
         }
-        return arr.toString(2) // Indentación de 2 espacios
+        val root = JSONObject(trimmed)
+        return BackupData(
+            notes = notesFromArray(root.optJSONArray("notes") ?: JSONArray()),
+            reminders = remindersFromArray(root.optJSONArray("reminders") ?: JSONArray()),
+        )
     }
 
-    /** Parsea JSON (array) a lista de notas, tolerando campos faltantes. */
-    fun fromJson(json: String): List<NoteEntity> {
-        val out = mutableListOf<NoteEntity>()
-        if (json.isBlank()) return out
-        val arr = JSONArray(json)
-        for (i in 0 until arr.length()) {
-            val o = arr.getJSONObject(i)
-            out += NoteEntity(
-                id = o.optLong("id", 0),
-                title = o.optString("title", ""),
-                body = o.optString("body", ""),
-                createdAt = o.optLong("createdAt", System.currentTimeMillis()),
-                deletedAt = if (o.isNull("deletedAt")) null else o.optLong("deletedAt")
-            )
+    fun readFromUri(cr: ContentResolver, uri: Uri): BackupData {
+        val text = cr.openInputStream(uri)?.use { String(it.readBytes(), Charsets.UTF_8) }.orEmpty()
+        return fromJson(text)
+    }
+
+    private fun noteToJson(note: NoteEntity) = JSONObject().apply {
+        put("id", note.id)
+        put("title", note.title)
+        put("body", note.body)
+        put("createdAt", note.createdAt)
+        put("deletedAt", note.deletedAt ?: JSONObject.NULL)
+        put("reminderAt", note.reminderAt ?: JSONObject.NULL)
+    }
+
+    private fun reminderToJson(reminder: ReminderEntity) = JSONObject().apply {
+        put("id", reminder.id)
+        put("category", reminder.category)
+        put("description", reminder.description)
+        put("triggerAt", reminder.triggerAt)
+        put("repeat", reminder.repeat.name)
+        put("completed", reminder.completed)
+        put("createdAt", reminder.createdAt)
+    }
+
+    private fun notesFromArray(arr: JSONArray): List<NoteEntity> = buildList {
+        for (index in 0 until arr.length()) {
+            val item = arr.getJSONObject(index)
+            add(NoteEntity(
+                id = item.optLong("id", 0),
+                title = item.optString("title", ""),
+                body = item.optString("body", ""),
+                createdAt = item.optLong("createdAt", System.currentTimeMillis()),
+                deletedAt = if (item.isNull("deletedAt")) null else item.optLong("deletedAt"),
+                reminderAt = if (item.isNull("reminderAt")) null else item.optLong("reminderAt"),
+            ))
         }
-        return out
     }
 
-    // ---------- Almacenamiento interno (fallback) ----------
-
-    /** Escribe el json de todas las notas en almacenamiento interno privado. */
-    fun writeInternal(context: Context, list: List<NoteEntity>) {
-        context.openFileOutput("backup_internal.json", Context.MODE_PRIVATE).use {
-            it.write(toJson(list).toByteArray(Charsets.UTF_8))
+    private fun remindersFromArray(arr: JSONArray): List<ReminderEntity> = buildList {
+        for (index in 0 until arr.length()) {
+            val item = arr.getJSONObject(index)
+            add(ReminderEntity(
+                id = item.optLong("id", 0),
+                category = item.optString("category", ""),
+                description = item.optString("description", ""),
+                triggerAt = item.optLong("triggerAt", System.currentTimeMillis()),
+                repeat = ReminderRepeat.entries.firstOrNull {
+                    it.name == item.optString("repeat", "NONE")
+                } ?: ReminderRepeat.NONE,
+                completed = item.optBoolean("completed", false),
+                createdAt = item.optLong("createdAt", System.currentTimeMillis()),
+            ))
         }
     }
-
-    /** Lee el json interno; si no existe, devuelve lista vacía. */
-    fun readInternal(context: Context): List<NoteEntity> {
-        return try {
-            val s = context.openFileInput("backup_internal.json").use {
-                String(it.readBytes(), Charsets.UTF_8)
-            }
-            fromJson(s)
-        } catch (_: Exception) { emptyList() }
-    }
-
-    // ---------- Lectura desde SAF ----------
-
-    /** Lee texto de un Uri (carpeta/archivo elegido por el usuario con SAF). */
-    fun readTextFromUri(cr: ContentResolver, uri: Uri): String {
-        return cr.openInputStream(uri)?.use { String(it.readBytes(), Charsets.UTF_8) }.orEmpty()
-    }
-
-    /** Lee y parsea notas desde un Uri JSON. */
-    fun readNotesFromUri(cr: ContentResolver, uri: Uri): List<NoteEntity> =
-        fromJson(readTextFromUri(cr, uri))
 }

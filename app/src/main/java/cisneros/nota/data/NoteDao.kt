@@ -35,6 +35,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): NoteEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM notes WHERE title = :title AND content = :body AND createdAt = :createdAt)")
+    suspend fun exists(title: String, body: String, createdAt: Long): Boolean
+
     @Query("DELETE FROM notes WHERE id = :id")
     suspend fun deleteById(id: Long)
 
