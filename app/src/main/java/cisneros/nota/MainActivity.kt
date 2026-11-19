@@ -144,13 +144,25 @@ private fun AppRoot(
     var showCalendar by rememberSaveable { mutableStateOf(false) }
     var showReminders by rememberSaveable { mutableStateOf(false) }
     var showTestNotifications by rememberSaveable { mutableStateOf(false) }
+    var showTrash by rememberSaveable { mutableStateOf(false) }
 
     // Compartir (WhatsApp → Business → chooser)
     val shareCurrentNote: () -> Unit = {
         state.editing?.let { shareNote(context, it.title, it.body) }
     }
 
-    if (showTestNotifications) {
+    if (showTrash) {
+        ResponsivePane {
+            cisneros.nota.ui.TrashScreen(
+                trashItems = state.trashItems,
+                textSize = textSize,
+                onBack = { showTrash = false },
+                onRestore = vm::restoreNote,
+                onDeletePermanently = vm::deleteNotePermanently,
+                onEmptyTrash = vm::emptyTrash
+            )
+        }
+    } else if (showTestNotifications) {
         ResponsivePane {
             cisneros.nota.ui.TestNotificationsScreen(
                 textSize = textSize,
@@ -194,6 +206,7 @@ private fun AppRoot(
                     onOpenCalendar = { showCalendar = true },
                     onMedication = { showReminders = true },
                     onTestNotifications = { showTestNotifications = true },
+                    onOpenTrash = { showTrash = true },
                     onBackup = { backupFile.launch("mis-notas.json") },
                     onRestore = { restoreFile.launch("application/json") }
                 )

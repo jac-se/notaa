@@ -36,4 +36,13 @@ class ReminderTest {
         assertEquals("Mi recordatorio", reminder.displayTitle())
         assertFalse(reminder.completed)
     }
+
+    @Test
+    fun noteEntityHandlesTrashState() {
+        val activeNote = cisneros.nota.data.NoteEntity(id = 1L, title = "Mi nota", body = "Contenido")
+        val trashedNote = activeNote.copy(deletedAt = System.currentTimeMillis())
+
+        assertTrue(activeNote.deletedAt == null)
+        assertTrue(trashedNote.deletedAt != null)
+    }
 }

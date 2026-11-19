@@ -74,6 +74,7 @@ fun NoteListScreen(
     onOpenCalendar: () -> Unit = {},
     onMedication: () -> Unit = {},
     onTestNotifications: () -> Unit = {},
+    onOpenTrash: () -> Unit = {},
     onBackup: () -> Unit = {},
     onRestore: () -> Unit = {}
 ) {
@@ -130,6 +131,10 @@ fun NoteListScreen(
                         expanded = moreMenuOpen,
                         onDismissRequest = { moreMenuOpen = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Papelera de notas", fontSize = sizes.body) },
+                            onClick = { moreMenuOpen = false; onOpenTrash() }
+                        )
                         DropdownMenuItem(
                             text = { Text("Probar avisos y permisos", fontSize = sizes.body) },
                             onClick = { moreMenuOpen = false; onTestNotifications() }

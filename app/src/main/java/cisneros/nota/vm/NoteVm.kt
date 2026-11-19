@@ -30,6 +30,7 @@ data class UiState(
     val results: List<NoteEntity> = emptyList(), // resultados de búsqueda
     val query: String = "",
     val reminders: List<ReminderEntity> = emptyList(),
+    val trashItems: List<NoteEntity> = emptyList(), // notas en papelera
     val editing: EditingNote? = null             // null = lista, no hay editor abierto
 )
 
@@ -52,6 +53,11 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             dao.streamAll().collect { notes ->
                 _state.update { it.copy(items = notes) }
+            }
+        }
+        viewModelScope.launch {
+            dao.streamTrash().collect { trash ->
+                _state.update { it.copy(trashItems = trash) }
             }
         }
         viewModelScope.launch {
@@ -216,6 +222,24 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
             } else {
                 dao.moveToTrash(id, System.currentTimeMillis()) // papelera
             }
+        }
+    }
+
+    fun restoreNote(id: Long) {
+        viewModelScope.launch {
+            dao.restore(id)
+        }
+    }
+
+    fun emptyTrash() {
+        viewModelScope.launch {
+            dao.emptyTrash()
+        }
+    }
+
+    fun deleteNotePermanently(id: Long) {
+        viewModelScope.launch {
+            dao.deleteById(id)
         }
     }
 

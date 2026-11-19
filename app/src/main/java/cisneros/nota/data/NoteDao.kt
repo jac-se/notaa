@@ -42,6 +42,9 @@ interface NoteDao {
     suspend fun deleteById(id: Long)
 
     // ===== PAPELERA =====
+    @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
+    fun streamTrash(): Flow<List<NoteEntity>>
+
     @Query("UPDATE notes SET deletedAt = :millis WHERE id = :id")
     suspend fun moveToTrash(id: Long, millis: Long)
 
