@@ -10,10 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +36,7 @@ fun AccessibleEditorScreen(
     val sizes = textSize.toAccessibleSizes()
     val cs = MaterialTheme.colorScheme
     val lifecycleOwner = LocalLifecycleOwner.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, vm) {
         val observer = LifecycleEventObserver { _, event ->
@@ -110,10 +108,7 @@ fun AccessibleEditorScreen(
                 // Botón eliminar (solo si existe la nota)
                 if (editing.id != null) {
                     IconButton(
-                        onClick = {
-                            vm.deleteNote(editing.id, hardDelete = false)
-                            onBackToList()
-                        }
+                        onClick = { showDeleteDialog = true }
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Delete,
@@ -123,6 +118,30 @@ fun AccessibleEditorScreen(
                     }
                 }
             }
+        }
+
+        if (showDeleteDialog && editing.id != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("¿Enviar nota a la papelera?", fontSize = sizes.title) },
+                text = { Text("Esta nota se moverá a la papelera.", fontSize = sizes.body) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteDialog = false
+                            vm.deleteNote(editing.id, hardDelete = false)
+                            onBackToList()
+                        }
+                    ) {
+                        Text("Eliminar", fontSize = sizes.body)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancelar", fontSize = sizes.body)
+                    }
+                }
+            )
         }
 
         // El formulario se redimensiona con el IME; Contenido gestiona su propio scroll.

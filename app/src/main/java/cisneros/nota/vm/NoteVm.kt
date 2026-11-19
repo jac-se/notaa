@@ -205,16 +205,16 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
     // BORRAR (papelera o definitivo)
     // =========================
     fun deleteNote(id: Long, hardDelete: Boolean = false) {
+        autoSaveJob?.cancel()
+        autoSaveJob = null
+        _state.update { st ->
+            if (st.editing?.id == id) st.copy(editing = null) else st
+        }
         viewModelScope.launch {
             if (hardDelete) {
                 dao.deleteById(id)              // borrado definitivo
             } else {
                 dao.moveToTrash(id, System.currentTimeMillis()) // papelera
-            }
-
-            // Si justo la que se estaba editando era esa, cierra el editor
-            _state.update { st ->
-                if (st.editing?.id == id) st.copy(editing = null) else st
             }
         }
     }
@@ -267,6 +267,7 @@ class NoteVm(app: Application) : AndroidViewModel(app) {
 
     fun closeEditor() {
         autoSaveJob?.cancel()
+        autoSaveJob = null
         val snapshot = _state.value.editing
         _state.update { it.copy(editing = null) }
 
